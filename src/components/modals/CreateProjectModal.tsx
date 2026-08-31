@@ -157,7 +157,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
             {/* Client Assignment */}
             <div>
               <label className="block text-slate-800 font-semibold mb-1 flex items-center gap-1.5">
-                <Building className="w-3.5 h-3.5 text-amber-600" /> Client Assigné (RBAC)
+                <Building className="w-3.5 h-3.5 text-amber-600" /> Client Partenaire
               </label>
               <select
                 id="select-project-client-modal"
@@ -232,7 +232,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
           <div>
             <label className="block text-slate-800 font-semibold mb-2 flex items-center gap-1.5">
               <Users className="w-3.5 h-3.5 text-emerald-600" />
-              Développeurs Assignés au Projet (Contrôle d'accès RBAC)
+              Équipe de Développeurs Assignés au Projet
             </label>
             {devs.length === 0 ? (
               <div className="p-3 bg-slate-50 border border-dashed border-slate-300 rounded-xl text-slate-500 text-[11px]">

@@ -61,6 +61,19 @@ async function startServer() {
     res.json(db);
   });
 
+  // FULL SYNC POST (Save all database state atomically)
+  app.post('/api/sync', (req, res) => {
+    const newState = req.body;
+    if (newState && Array.isArray(newState.users)) {
+      updateDatabase((current) => ({
+        ...current,
+        ...newState,
+      }));
+      return res.json({ success: true, timestamp: new Date().toISOString() });
+    }
+    res.status(400).json({ error: 'Payload de synchronisation invalide.' });
+  });
+
   // ==========================================
   // USERS & ROLES API
   // ==========================================
@@ -99,6 +112,16 @@ async function startServer() {
       return res.status(404).json({ error: 'User not found' });
     }
     res.json(updatedUser);
+  });
+
+  app.delete('/api/users/:id', (req, res) => {
+    const { id } = req.params;
+    updateDatabase((db) => ({
+      ...db,
+      users: db.users.filter((u) => u.id !== id),
+      projectMembers: db.projectMembers.filter((m) => m.user_id !== id),
+    }));
+    res.json({ success: true });
   });
 
   // ==========================================
@@ -146,6 +169,19 @@ async function startServer() {
     });
     if (!updatedProject) return res.status(404).json({ error: 'Project not found' });
     res.json(updatedProject);
+  });
+
+  app.delete('/api/projects/:id', (req, res) => {
+    const { id } = req.params;
+    updateDatabase((db) => ({
+      ...db,
+      projects: db.projects.filter((p) => p.id !== id),
+      projectMembers: db.projectMembers.filter((m) => m.project_id !== id),
+      tasks: db.tasks.filter((t) => t.project_id !== id),
+      milestones: db.milestones.filter((m) => m.project_id !== id),
+      contracts: db.contracts.filter((c) => c.project_id !== id),
+    }));
+    res.json({ success: true });
   });
 
   // ==========================================
@@ -211,6 +247,15 @@ async function startServer() {
     });
     if (!updatedTask) return res.status(404).json({ error: 'Task not found' });
     res.json(updatedTask);
+  });
+
+  app.delete('/api/tasks/:id', (req, res) => {
+    const { id } = req.params;
+    updateDatabase((db) => ({
+      ...db,
+      tasks: db.tasks.filter((t) => t.id !== id),
+    }));
+    res.json({ success: true });
   });
 
   // ==========================================

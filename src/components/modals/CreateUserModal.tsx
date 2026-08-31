@@ -155,7 +155,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ isOpen, onClos
           </div>
 
           <div>
-            <label className="block text-slate-800 font-semibold mb-2">Rôle & Privilèges d'Accès (RBAC) *</label>
+            <label className="block text-slate-800 font-semibold mb-2">Rôle & Niveau d'Accès *</label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <button
                 type="button"

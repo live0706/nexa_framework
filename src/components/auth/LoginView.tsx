@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
-  Shield,
-  Layers,
   Lock,
   Mail,
   CheckCircle2,
@@ -12,6 +10,7 @@ import {
   KeyRound,
   ShieldCheck,
 } from 'lucide-react';
+import { NexaLogo } from '../common/NexaLogo';
 
 export const LoginView: React.FC = () => {
   const { loginWithCredentials } = useApp();
@@ -46,14 +45,14 @@ export const LoginView: React.FC = () => {
     <div id="login-view-screen" className="min-h-screen bg-slate-100 flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8 relative">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         {/* App Logo */}
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-slate-900 border border-slate-800 shadow-md mb-3 text-white">
-          <Layers className="w-8 h-8 text-slate-100" />
+        <div className="mb-3 flex justify-center">
+          <NexaLogo size={58} />
         </div>
 
         <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-          NEXA DASHBOARD
+          NEXA
         </h1>
-        <p className="mt-1.5 text-xs text-slate-600">
+        <p className="mt-1 text-xs text-slate-600">
           Plateforme de pilotage et gestion de projets partagés
         </p>
       </div>
@@ -64,11 +63,10 @@ export const LoginView: React.FC = () => {
           <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-5">
             <div className="flex items-center gap-2">
               <KeyRound className="w-4 h-4 text-slate-700" />
-              <h2 className="text-sm font-bold text-slate-900">Espace de Connexion Sécurisé</h2>
+              <h2 className="text-sm font-bold text-slate-900">Espace de Connexion</h2>
             </div>
-            <span className="text-[10px] font-mono bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded font-semibold flex items-center gap-1">
-              <Shield className="w-3 h-3 text-indigo-600" />
-              RBAC
+            <span className="text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded">
+              Portail Collaboratif
             </span>
           </div>
 

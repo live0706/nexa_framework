@@ -19,10 +19,10 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({ allowedRoles, children }) 
         <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 flex items-center justify-center mx-auto mb-4">
           <ShieldAlert className="w-7 h-7" />
         </div>
-        <h2 className="text-xl font-bold text-slate-100 mb-2">Accès Non Autorisé (Contrôle RBAC)</h2>
+        <h2 className="text-xl font-bold text-slate-100 mb-2">Accès Non Autorisé</h2>
         <p className="text-sm text-slate-300 mb-6 leading-relaxed">
-          Votre rôle actuel (<span className="font-mono font-semibold text-rose-400">{currentUser.role}</span>) ne vous permet pas de consulter cette ressource.
-          Cette restriction garantit l’isolation stricte des données entre Administrateurs, Développeurs et Clients.
+          Votre profil (<span className="font-semibold text-rose-400">{currentUser.name}</span>) ne dispose pas des droits requis pour consulter cet espace.
+          Cette restriction garantit l'isolation stricte des données entre Administrateurs, Développeurs et Clients.
         </p>
         <div className="flex items-center justify-center gap-3">
           <button

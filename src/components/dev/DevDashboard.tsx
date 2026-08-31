@@ -110,7 +110,7 @@ export const DevDashboard: React.FC<DevDashboardProps> = ({
           <div className="text-2xl font-extrabold text-slate-900 mt-2 font-mono">
             {assignedProjects.length}
           </div>
-          <p className="text-[11px] text-slate-500 mt-1">Accès restreint par politique RBAC</p>
+          <p className="text-[11px] text-slate-500 mt-1">Projets et missions actives</p>
         </div>
 
         <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col justify-between shadow-xs">

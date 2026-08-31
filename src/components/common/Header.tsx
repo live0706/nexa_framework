@@ -9,12 +9,10 @@ import {
   Users,
   LogOut,
   ChevronDown,
-  RotateCcw,
-  Sparkles,
-  Layers,
   Check,
 } from 'lucide-react';
 import { UserRole } from '../../types';
+import { NexaLogo } from './NexaLogo';
 
 export const Header: React.FC = () => {
   const { currentUser, users, switchUser, logout, resetAllData } = useApp();
@@ -67,20 +65,18 @@ export const Header: React.FC = () => {
   return (
     <header id="app-header" className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 lg:px-8 py-3">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-        {/* Brand & RBAC status */}
+        {/* Brand */}
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-white shadow-xs">
-            <Layers className="w-5 h-5 text-slate-100" />
-          </div>
+          <NexaLogo size={36} />
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-slate-900 text-base tracking-tight">NEXA DASHBOARD</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-medium bg-slate-100 border border-slate-200 text-slate-600">
-                RBAC v2.5
+              <span className="font-bold text-slate-900 text-base tracking-tight">NEXA</span>
+              <span className="text-[11px] font-semibold text-slate-500 hidden sm:inline">
+                Workspace
               </span>
             </div>
             <p className="text-xs text-slate-500 hidden sm:block">
-              SuperAdmin • Gestionnaire de Projets • Développeurs • Clients
+              Gestion de Projets & Collaborations
             </p>
           </div>
         </div>

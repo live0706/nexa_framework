@@ -395,8 +395,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           <div className="mt-4 pt-4 border-t border-slate-100">
             <div className="flex items-center justify-between text-xs text-slate-500">
-              <span>Sécurité Intranet</span>
-              <span className="text-emerald-700 font-mono font-semibold">Contrôle RBAC Actif</span>
+              <span>Sécurité de l'espace</span>
+              <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                Accès Sécurisé
+              </span>
             </div>
           </div>
         </div>

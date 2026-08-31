@@ -158,7 +158,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
             {/* Visibility Toggle (Crucial RBAC feature) */}
             <div>
-              <label className="text-[11px] font-semibold text-slate-600 block mb-1">Visibilité RBAC</label>
+              <label className="text-[11px] font-semibold text-slate-600 block mb-1">Visibilité de la tâche</label>
               <button
                 id="btn-toggle-client-visibility-modal"
                 type="button"

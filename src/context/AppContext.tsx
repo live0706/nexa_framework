@@ -266,7 +266,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
-  // Sync with Server Database on boot
+  // Sync with Server Database on boot & merge with local storage
   useEffect(() => {
     fetch('/api/sync')
       .then((res) => {
@@ -274,25 +274,58 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         throw new Error('API offline');
       })
       .then((data) => {
-        if (data && data.users && data.projects) {
-          setUsers(data.users);
-          setProjects(data.projects);
-          setProjectMembers(data.projectMembers || []);
-          setTasks(data.tasks || []);
-          setMilestones(data.milestones || []);
-          setTimeLogs(data.timeLogs || []);
-          setInvoices(data.invoices || []);
-          setContracts(data.contracts || []);
-          setDevProfiles(data.devProfiles || []);
-          setDevRates(data.devRates || []);
+        if (data && Array.isArray(data.users) && data.users.length > 0) {
+          // Merge users: keep server users + any unique local users created offline
+          setUsers((currentUsers) => {
+            const serverMap = new Map(data.users.map((u: User) => [u.id, u]));
+            const localOnly = currentUsers.filter((u) => !serverMap.has(u.id));
+            return [...data.users, ...localOnly];
+          });
+
+          // Merge projects
+          setProjects((currentProjects) => {
+            const serverMap = new Map(data.projects.map((p: Project) => [p.id, p]));
+            const localOnly = currentProjects.filter((p) => !serverMap.has(p.id));
+            return [...data.projects, ...localOnly];
+          });
+
+          if (Array.isArray(data.projectMembers)) {
+            setProjectMembers((currentMembers) => {
+              const serverMap = new Map(data.projectMembers.map((m: ProjectMember) => [m.id, m]));
+              const localOnly = currentMembers.filter((m) => !serverMap.has(m.id));
+              return [...data.projectMembers, ...localOnly];
+            });
+          }
+
+          if (Array.isArray(data.tasks)) {
+            setTasks((currentTasks) => {
+              const serverMap = new Map(data.tasks.map((t: Task) => [t.id, t]));
+              const localOnly = currentTasks.filter((t) => !serverMap.has(t.id));
+              return [...data.tasks, ...localOnly];
+            });
+          }
+
+          if (Array.isArray(data.milestones)) {
+            setMilestones((currentM) => {
+              const serverMap = new Map(data.milestones.map((m: Milestone) => [m.id, m]));
+              const localOnly = currentM.filter((m) => !serverMap.has(m.id));
+              return [...data.milestones, ...localOnly];
+            });
+          }
+
+          if (Array.isArray(data.timeLogs)) setTimeLogs(data.timeLogs);
+          if (Array.isArray(data.invoices)) setInvoices(data.invoices);
+          if (Array.isArray(data.contracts)) setContracts(data.contracts);
+          if (Array.isArray(data.devProfiles)) setDevProfiles(data.devProfiles);
+          if (Array.isArray(data.devRates)) setDevRates(data.devRates);
         }
       })
       .catch((err) => {
-        console.log('Using local client storage fallback:', err.message);
+        console.log('Using persistent local client storage fallback:', err.message);
       });
   }, []);
 
-  // Sync to LocalStorage
+  // Sync to LocalStorage & Server Database on any change
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
@@ -311,6 +344,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     } catch (e) {
       console.error('LocalStorage sync error', e);
     }
+
+    // Persist full state to backend JSON server database
+    const dbPayload = {
+      users,
+      projects,
+      projectMembers,
+      tasks,
+      milestones,
+      timeLogs,
+      invoices,
+      contracts,
+      devProfiles,
+      devRates,
+    };
+
+    fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dbPayload),
+    }).catch(() => {
+      // Offline fallback
+    });
   }, [users, projects, projectMembers, tasks, milestones, timeLogs, invoices, contracts, devProfiles, devRates, currentUser]);
 
   // Toast Helpers
@@ -352,22 +407,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (res.ok) {
         const data = await res.json();
         if (data.user) {
-          setCurrentUser(data.user);
-          if (data.user.role === 'SUPER_ADMIN' || data.user.role === 'ADMIN' || data.user.role === 'PROJECT_MANAGER') {
+          // Find user in full state to retain all attributes
+          const fullUser = users.find((u) => u.id === data.user.id) || data.user;
+          setCurrentUser(fullUser);
+          if (fullUser.role === 'SUPER_ADMIN' || fullUser.role === 'ADMIN' || fullUser.role === 'PROJECT_MANAGER') {
             setAdminTab('dashboard');
-          } else if (data.user.role === 'DEV') {
+          } else if (fullUser.role === 'DEV') {
             setDevTab('my_projects');
-          } else if (data.user.role === 'CLIENT') {
+          } else if (fullUser.role === 'CLIENT') {
             setClientTab('overview');
           }
-          showToast('Connexion réussie', `Bienvenue, ${data.user.name} (${data.user.role})`, 'success');
+          showToast('Connexion réussie', `Bienvenue, ${fullUser.name}`, 'success');
           return true;
-        }
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        if (errData.error) {
-          showToast('Échec de connexion', errData.error, 'error');
-          return false;
         }
       }
     } catch {
@@ -395,7 +446,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     } else if (matched.role === 'CLIENT') {
       setClientTab('overview');
     }
-    showToast('Connexion réussie', `Bienvenue, ${matched.name} (${matched.role})`, 'success');
+    showToast('Connexion réussie', `Bienvenue, ${matched.name}`, 'success');
     return true;
   };
 

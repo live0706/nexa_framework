@@ -91,9 +91,9 @@ export const AdminUsersTable: React.FC<AdminUsersTableProps> = ({ onOpenCreateUs
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Gestion des Utilisateurs & Rôles RBAC</h1>
+          <h1 className="text-xl font-bold text-slate-900">Gestion des Utilisateurs & Profils</h1>
           <p className="text-xs text-slate-500 mt-1">
-            Création, modification des attributions de rôles (Admin, Dev, Client) et gouvernance des accès.
+            Création, modification des attributions de rôles (Admin, PM, Dev, Client) et gestion des accès.
           </p>
         </div>
         <button
@@ -144,7 +144,7 @@ export const AdminUsersTable: React.FC<AdminUsersTableProps> = ({ onOpenCreateUs
               <tr className="border-b border-slate-200 bg-slate-50 text-slate-600 font-medium">
                 <th className="py-3.5 px-4 font-semibold">Utilisateur</th>
                 <th className="py-3.5 px-4 font-semibold">Poste / Organisation</th>
-                <th className="py-3.5 px-4 font-semibold">Rôle RBAC Actuel</th>
+                <th className="py-3.5 px-4 font-semibold">Rôle & Permissions</th>
                 <th className="py-3.5 px-4 font-semibold">Projets Assignés</th>
                 <th className="py-3.5 px-4 font-semibold">Modifier le Rôle</th>
                 <th className="py-3.5 px-4 text-right font-semibold">Actions</th>

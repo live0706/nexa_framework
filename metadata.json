@@ -1,6 +1,6 @@
 {
   "name": "Nexa Dashboard",
-  "description": "Plateforme intranet Nexa pour le pilotage et la gestion de projets avec contrôle d'accès basé sur les rôles (Admin, Développeur, Client).",
+  "description": "Plateforme collaborative NEXA pour le pilotage et la gestion unifiée de projets entre équipes et clients partenaires.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
