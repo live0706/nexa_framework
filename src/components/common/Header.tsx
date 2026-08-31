@@ -131,27 +131,16 @@ export const Header: React.FC = () => {
                   </div>
 
                   {/* Actions */}
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                    <button
-                      id="btn-reset-demo-data"
-                      onClick={() => {
-                        resetAllData();
-                        setShowSwitchMenu(false);
-                      }}
-                      className="text-[11px] text-slate-600 hover:text-amber-700 flex items-center gap-1 px-2 py-1 rounded hover:bg-slate-50 transition-colors cursor-pointer"
-                      title="Restaurer les projets et données de démo"
-                    >
-                      <RotateCcw className="w-3 h-3" /> Réinitialiser données
-                    </button>
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-end">
                     <button
                       id="btn-logout"
                       onClick={() => {
                         logout();
                         setShowSwitchMenu(false);
                       }}
-                      className="text-[11px] text-rose-600 hover:text-rose-700 flex items-center gap-1 px-2 py-1 rounded hover:bg-rose-50 transition-colors font-medium cursor-pointer"
+                      className="text-xs text-rose-600 hover:text-rose-700 flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-rose-50 transition-colors font-semibold cursor-pointer w-full justify-center"
                     >
-                      <LogOut className="w-3 h-3" /> Déconnexion
+                      <LogOut className="w-3.5 h-3.5" /> Se déconnecter
                     </button>
                   </div>
                 </div>

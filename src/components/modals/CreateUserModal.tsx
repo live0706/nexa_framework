@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
   X,
@@ -9,22 +9,40 @@ import {
   Briefcase,
   CheckCircle2,
   Lock,
+  UserCheck,
 } from 'lucide-react';
-import { UserRole } from '../../types';
+import { User, UserRole } from '../../types';
 
 interface CreateUserModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialUser?: User | null;
 }
 
-export const CreateUserModal: React.FC<CreateUserModalProps> = ({ isOpen, onClose }) => {
-  const { createUser } = useApp();
+export const CreateUserModal: React.FC<CreateUserModalProps> = ({ isOpen, onClose, initialUser }) => {
+  const { createUser, updateUser } = useApp();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('Nexa2026!');
+  const [password, setPassword] = useState('');
   const [jobTitle, setJobTitle] = useState('');
   const [role, setRole] = useState<UserRole>('DEV');
+
+  useEffect(() => {
+    if (initialUser) {
+      setName(initialUser.name || '');
+      setEmail(initialUser.email || '');
+      setPassword(initialUser.password || '');
+      setJobTitle(initialUser.job_title || '');
+      setRole(initialUser.role || 'DEV');
+    } else {
+      setName('');
+      setEmail('');
+      setPassword('');
+      setJobTitle('');
+      setRole('DEV');
+    }
+  }, [initialUser, isOpen]);
 
   if (!isOpen) return null;
 
@@ -32,19 +50,24 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ isOpen, onClos
     e.preventDefault();
     if (!name.trim() || !email.trim()) return;
 
-    createUser({
-      name: name.trim(),
-      email: email.trim(),
-      password: password.trim() || 'Nexa2026!',
-      role,
-      job_title: jobTitle.trim() || undefined,
-    });
+    if (initialUser) {
+      updateUser(initialUser.id, {
+        name: name.trim(),
+        email: email.trim(),
+        password: password.trim() || initialUser.password || 'Adm@n2026',
+        role,
+        job_title: jobTitle.trim() || undefined,
+      });
+    } else {
+      createUser({
+        name: name.trim(),
+        email: email.trim(),
+        password: password.trim() || 'Nexa2026!',
+        role,
+        job_title: jobTitle.trim() || undefined,
+      });
+    }
 
-    setName('');
-    setEmail('');
-    setPassword('Nexa2026!');
-    setJobTitle('');
-    setRole('DEV');
     onClose();
   };
 
@@ -56,8 +79,14 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ isOpen, onClos
       >
         <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <UserPlus className="w-5 h-5 text-slate-900" />
-            <h3 className="font-bold text-slate-900 text-sm">Créer un Nouvel Utilisateur & Définir son Rôle</h3>
+            {initialUser ? (
+              <UserCheck className="w-5 h-5 text-slate-900" />
+            ) : (
+              <UserPlus className="w-5 h-5 text-slate-900" />
+            )}
+            <h3 className="font-bold text-slate-900 text-sm">
+              {initialUser ? 'Modifier le Compte & Identifiants' : 'Créer un Nouvel Utilisateur'}
+            </h3>
           </div>
           <button
             onClick={onClose}
@@ -90,21 +119,23 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ isOpen, onClos
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="alexia@entreprise.fr"
+                placeholder="nom@entreprise.fr"
                 className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-900"
               />
             </div>
             <div>
-              <label className="block text-slate-800 font-semibold mb-1">Mot de passe initial *</label>
+              <label className="block text-slate-800 font-semibold mb-1">
+                {initialUser ? 'Nouveau mot de passe' : 'Mot de passe initial *'}
+              </label>
               <div className="relative">
                 <Lock className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
                 <input
                   id="input-new-user-password"
                   type="text"
-                  required
+                  required={!initialUser}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Nexa2026!"
+                  placeholder={initialUser ? 'Laisser vide pour conserver' : 'Mot de passe'}
                   className="w-full bg-white border border-slate-300 rounded-lg pl-8 pr-3 py-2 text-slate-900 font-mono text-xs focus:outline-none focus:border-slate-900"
                 />
               </div>
@@ -118,7 +149,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ isOpen, onClos
               type="text"
               value={jobTitle}
               onChange={(e) => setJobTitle(e.target.value)}
-              placeholder="ex: Lead Tech Backend / Responsable Achats Client"
+              placeholder="ex: Directeur Technique / Responsable Projet"
               className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-900"
             />
           </div>
@@ -202,7 +233,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ isOpen, onClos
               className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
             >
               <CheckCircle2 className="w-4 h-4" />
-              Créer l'utilisateur
+              {initialUser ? 'Enregistrer les modifications' : 'Créer l\'utilisateur'}
             </button>
           </div>
         </form>

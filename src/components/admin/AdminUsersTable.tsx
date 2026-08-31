@@ -12,8 +12,10 @@ import {
   Briefcase,
   Layers,
   KeyRound,
+  Edit2,
 } from 'lucide-react';
 import { User, UserRole } from '../../types';
+import { CreateUserModal } from '../modals/CreateUserModal';
 
 interface AdminUsersTableProps {
   onOpenCreateUser: () => void;
@@ -32,6 +34,7 @@ export const AdminUsersTable: React.FC<AdminUsersTableProps> = ({ onOpenCreateUs
 
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
+  const [editingUser, setEditingUser] = useState<User | null>(null);
 
   const filteredUsers = users.filter((u) => {
     const matchesSearch =
@@ -96,7 +99,7 @@ export const AdminUsersTable: React.FC<AdminUsersTableProps> = ({ onOpenCreateUs
         <button
           id="btn-admin-add-user-top"
           onClick={onOpenCreateUser}
-          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center gap-2 shadow-xs transition-colors shrink-0"
+          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center gap-2 shadow-xs transition-colors shrink-0 cursor-pointer"
         >
           <UserPlus className="w-4 h-4" />
           Ajouter un Utilisateur
@@ -212,6 +215,14 @@ export const AdminUsersTable: React.FC<AdminUsersTableProps> = ({ onOpenCreateUs
                     <td className="py-3.5 px-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
+                          id={`btn-edit-user-${u.id}`}
+                          onClick={() => setEditingUser(u)}
+                          className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+                          title="Modifier les identifiants et détails du compte"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
                           id={`btn-impersonate-${u.id}`}
                           onClick={() => switchUser(u.id)}
                           className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded text-[11px] font-medium border border-slate-200 transition-colors shadow-xs"
@@ -242,6 +253,15 @@ export const AdminUsersTable: React.FC<AdminUsersTableProps> = ({ onOpenCreateUs
           </table>
         </div>
       </div>
+
+      {/* Edit User Modal */}
+      {editingUser && (
+        <CreateUserModal
+          isOpen={!!editingUser}
+          onClose={() => setEditingUser(null)}
+          initialUser={editingUser}
+        />
+      )}
     </div>
   );
 };
