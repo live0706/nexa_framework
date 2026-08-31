@@ -14,20 +14,134 @@ import {
 export const INITIAL_USERS: User[] = [
   {
     id: 'usr_super_admin',
-    name: 'Administrateur',
+    name: 'Administrateur Général',
     email: 'admin@nexa.com',
     password: 'Adm@n2026',
     role: 'SUPER_ADMIN',
-    job_title: 'Directeur & Super-Administrateur',
+    job_title: 'Directeur Général & Super-Admin',
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
     created_at: '2026-01-01T00:00:00Z',
   },
+  {
+    id: 'usr_pm',
+    name: 'Thomas Bernard',
+    email: 'pm@nexa.com',
+    password: 'Pm@2026',
+    role: 'PROJECT_MANAGER',
+    job_title: 'Chef de Projet Senior',
+    avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80',
+    created_at: '2026-01-02T00:00:00Z',
+  },
+  {
+    id: 'usr_dev',
+    name: 'Youssef Amrani',
+    email: 'dev@nexa.com',
+    password: 'Dev@2026',
+    role: 'DEV',
+    job_title: 'Lead Développeur Full-Stack',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    created_at: '2026-01-03T00:00:00Z',
+  },
+  {
+    id: 'usr_client',
+    name: 'Sophie Laurent',
+    email: 'client@nexa.com',
+    password: 'Client@2026',
+    role: 'CLIENT',
+    job_title: 'Directrice Digital - Green Energy',
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+    created_at: '2026-01-04T00:00:00Z',
+  },
 ];
 
-export const INITIAL_PROJECTS: Project[] = [];
-export const INITIAL_PROJECT_MEMBERS: ProjectMember[] = [];
-export const INITIAL_TASKS: Task[] = [];
-export const INITIAL_MILESTONES: Milestone[] = [];
+export const INITIAL_PROJECTS: Project[] = [
+  {
+    id: 'proj_green_energy',
+    name: 'Refonte Portail Green Energy',
+    description: 'Modernisation de la plateforme client et intégration des dashboards énergétiques en temps réel.',
+    client_id: 'usr_client',
+    manager_id: 'usr_pm',
+    status: 'EN_COURS',
+    progress_percent: 65,
+    deadline: '2026-10-15',
+    created_at: '2026-01-10T00:00:00Z',
+    budget: 45000,
+    category: 'Développement Web & IoT',
+  },
+];
+
+export const INITIAL_PROJECT_MEMBERS: ProjectMember[] = [
+  { id: 'pm_1', project_id: 'proj_green_energy', user_id: 'usr_super_admin' },
+  { id: 'pm_2', project_id: 'proj_green_energy', user_id: 'usr_pm' },
+  { id: 'pm_3', project_id: 'proj_green_energy', user_id: 'usr_dev' },
+  { id: 'pm_4', project_id: 'proj_green_energy', user_id: 'usr_client' },
+];
+
+export const INITIAL_TASKS: Task[] = [
+  {
+    id: 'tsk_1',
+    project_id: 'proj_green_energy',
+    title: 'Architecture API & Base de données',
+    description: 'Conception des modèles PostgreSQL et des routes Express synchronisées.',
+    status: 'DONE',
+    priority: 'HIGH',
+    is_client_visible: true,
+    created_by: 'usr_pm',
+    assigned_to: 'usr_dev',
+    logged_hours: 24,
+    due_date: '2026-02-28',
+    created_at: '2026-01-15T00:00:00Z',
+  },
+  {
+    id: 'tsk_2',
+    project_id: 'proj_green_energy',
+    title: 'Développement du Dashboard Client',
+    description: 'Interface interactive avec métriques de consommation et alertes.',
+    status: 'IN_PROGRESS',
+    priority: 'HIGH',
+    is_client_visible: true,
+    created_by: 'usr_pm',
+    assigned_to: 'usr_dev',
+    logged_hours: 18,
+    due_date: '2026-09-30',
+    created_at: '2026-02-01T00:00:00Z',
+  },
+  {
+    id: 'tsk_3',
+    project_id: 'proj_green_energy',
+    title: 'Tests de charge et sécurité',
+    description: 'Validation des temps de réponse et conformité RGPD.',
+    status: 'TODO',
+    priority: 'MEDIUM',
+    is_client_visible: false,
+    created_by: 'usr_pm',
+    assigned_to: 'usr_dev',
+    logged_hours: 0,
+    due_date: '2026-10-10',
+    created_at: '2026-02-05T00:00:00Z',
+  },
+];
+
+export const INITIAL_MILESTONES: Milestone[] = [
+  {
+    id: 'mls_1',
+    project_id: 'proj_green_energy',
+    title: 'Jalon 1 - Maquettes & Spécifications',
+    description: 'Validation de l UX/UI et cahier des charges fonctionnel.',
+    due_date: '2026-02-15',
+    status: 'VALIDATED',
+    client_feedback: 'Excellentes propositions, validé pour passage en développement.',
+    feedback_date: '2026-02-16T10:00:00Z',
+  },
+  {
+    id: 'mls_2',
+    project_id: 'proj_green_energy',
+    title: 'Jalon 2 - Version Bêta & API',
+    description: 'Livraison de la version de test pour recette client.',
+    due_date: '2026-09-30',
+    status: 'PENDING',
+  },
+];
 export const INITIAL_TIMELOGS: TimeLog[] = [];
 export const INITIAL_INVOICES: Invoice[] = [];
 export const INITIAL_CONTRACTS: Contract[] = [];

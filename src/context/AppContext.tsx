@@ -2,9 +2,12 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import {
   syncWorkspaceToFirebase,
   loadWorkspaceFromFirebase,
+  loadAllUsersFromFirebase,
   subscribeToFirebaseWorkspace,
+  subscribeToFirebaseUsers,
   fetchUserByEmailFromFirebase,
   deleteUserFromFirebase,
+  saveUserDirectlyToFirebase,
 } from '../lib/firebase';
 import {
   User,
@@ -162,7 +165,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const saved = localStorage.getItem(STORAGE_KEYS.USERS);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const map = new Map(parsed.map((u: User) => [u.id, u]));
+          INITIAL_USERS.forEach((initUser) => {
+            if (!map.has(initUser.id)) {
+              map.set(initUser.id, initUser);
+            }
+          });
+          return Array.from(map.values());
+        }
       }
       return INITIAL_USERS;
     } catch {
@@ -186,7 +197,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [projects, setProjects] = useState<Project[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.PROJECTS);
-      return saved ? JSON.parse(saved) : INITIAL_PROJECTS;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      return INITIAL_PROJECTS;
     } catch {
       return INITIAL_PROJECTS;
     }
@@ -195,7 +210,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [projectMembers, setProjectMembers] = useState<ProjectMember[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.MEMBERS);
-      return saved ? JSON.parse(saved) : INITIAL_PROJECT_MEMBERS;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      return INITIAL_PROJECT_MEMBERS;
     } catch {
       return INITIAL_PROJECT_MEMBERS;
     }
@@ -204,7 +223,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [tasks, setTasks] = useState<Task[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.TASKS);
-      return saved ? JSON.parse(saved) : INITIAL_TASKS;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      return INITIAL_TASKS;
     } catch {
       return INITIAL_TASKS;
     }
@@ -213,7 +236,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [milestones, setMilestones] = useState<Milestone[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.MILESTONES);
-      return saved ? JSON.parse(saved) : INITIAL_MILESTONES;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      return INITIAL_MILESTONES;
     } catch {
       return INITIAL_MILESTONES;
     }
@@ -325,7 +352,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // 1. Initial boot: Fetch from Firebase Firestore & Local Backend API
   useEffect(() => {
-    // Initial fetch from Firestore
+    // Initial fetch from Firestore global workspace
     loadWorkspaceFromFirebase().then((data) => {
       if (data && data.users && data.users.length > 0) {
         applyRemoteState(data);
@@ -340,15 +367,38 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
     });
 
+    // Also fetch all individual users from Firestore 'users' collection
+    loadAllUsersFromFirebase().then((remoteUsers) => {
+      if (remoteUsers && remoteUsers.length > 0) {
+        setUsers((currentUsers) => {
+          const map = new Map(currentUsers.map((u) => [u.id, u]));
+          remoteUsers.forEach((ru) => map.set(ru.id, ru));
+          return Array.from(map.values());
+        });
+      }
+    });
+
     // Real-time listener: receive updates when users on other phones/laptops create accounts or projects
-    const unsubscribe = subscribeToFirebaseWorkspace((remoteData) => {
+    const unsubWorkspace = subscribeToFirebaseWorkspace((remoteData) => {
       if (remoteData) {
         applyRemoteState(remoteData);
       }
     });
 
+    // Real-time listener specifically for users collection
+    const unsubUsers = subscribeToFirebaseUsers((remoteUsers) => {
+      if (remoteUsers && remoteUsers.length > 0) {
+        setUsers((currentUsers) => {
+          const map = new Map(currentUsers.map((u) => [u.id, u]));
+          remoteUsers.forEach((ru) => map.set(ru.id, ru));
+          return Array.from(map.values());
+        });
+      }
+    });
+
     return () => {
-      unsubscribe();
+      unsubWorkspace();
+      unsubUsers();
     };
   }, []);
 
@@ -453,11 +503,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       // Local / Cloud fallback
     }
 
-    // 2. Find in local users state or query directly from Cloud Firebase (Firestore & RTDB)
+    // 2. Direct Cloud & Local User Lookup
     let matched = users.find((u) => u.email.trim().toLowerCase() === cleanEmail);
 
+    // If not found locally, fetch directly from Cloud Firestore & Realtime DB
     if (!matched) {
-      // Direct live lookup in Firestore collection / app_state
       const remoteUser = await fetchUserByEmailFromFirebase(cleanEmail);
       if (remoteUser) {
         matched = remoteUser;
@@ -465,17 +515,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           if (!prev.some((u) => u.id === remoteUser.id)) {
             return [...prev, remoteUser];
           }
-          return prev;
+          return prev.map((u) => (u.id === remoteUser.id ? remoteUser : u));
         });
       }
     }
 
     if (!matched) {
-      showToast('Échec de connexion', 'Identifiant introuvable ou incorrect.', 'error');
+      showToast('Compte introuvable', `Aucun utilisateur trouvé avec l'adresse ${cleanEmail}.`, 'error');
       return false;
     }
 
-    const expectedPassword = (
+    let expectedPassword = (
       matched.password ||
       (matched.role === 'SUPER_ADMIN'
         ? 'Adm@n2026'
@@ -488,8 +538,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         : 'Nexa2026!')
     ).trim();
 
+    // If local password check fails, fetch the absolute latest user record from Cloud Firestore
     if (cleanPassword !== expectedPassword) {
-      showToast('Mot de passe incorrect', 'Vérifiez le mot de passe saisi pour ce compte.', 'error');
+      const freshRemote = await fetchUserByEmailFromFirebase(cleanEmail);
+      if (freshRemote && freshRemote.password) {
+        matched = freshRemote;
+        expectedPassword = freshRemote.password.trim();
+        setUsers((prev) => prev.map((u) => (u.id === freshRemote.id ? freshRemote : u)));
+      }
+    }
+
+    if (cleanPassword !== expectedPassword) {
+      showToast('Mot de passe incorrect', 'Le mot de passe saisi ne correspond pas à ce compte.', 'error');
       return false;
     }
 
@@ -576,18 +636,37 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const newUser: User = {
       ...userData,
       id: 'usr_' + Date.now(),
+      email: userData.email.trim().toLowerCase(),
+      password: (userData.password || 'Nexa2026!').trim(),
       created_at: new Date().toISOString(),
     };
     setUsers((prev) => [...prev, newUser]);
-    showToast('Utilisateur créé', `Le compte de ${newUser.name} a été créé avec succès.`, 'success');
+    saveUserDirectlyToFirebase(newUser);
+    showToast('Utilisateur créé', `Le compte de ${newUser.name} (${newUser.email}) a été créé et activé.`, 'success');
   };
 
   const updateUser = (userId: string, data: Partial<User>) => {
-    setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, ...data } : u)));
+    setUsers((prev) => {
+      const updatedList = prev.map((u) => {
+        if (u.id === userId) {
+          const updated: User = {
+            ...u,
+            ...data,
+            email: data.email ? data.email.trim().toLowerCase() : u.email,
+            password: data.password !== undefined ? data.password.trim() : u.password,
+          };
+          saveUserDirectlyToFirebase(updated);
+          return updated;
+        }
+        return u;
+      });
+      return updatedList;
+    });
+
     if (currentUser?.id === userId) {
       setCurrentUser((prev) => (prev ? { ...prev, ...data } : null));
     }
-    showToast('Utilisateur mis à jour', 'Les modifications ont été enregistrées.', 'success');
+    showToast('Utilisateur mis à jour', 'Les modifications et identifiants ont été enregistrés.', 'success');
   };
 
   const deleteUser = (userId: string) => {

@@ -47,11 +47,19 @@ export const AdminUsersTable: React.FC<AdminUsersTableProps> = ({ onOpenCreateUs
 
   const getRoleBadge = (role: UserRole) => {
     switch (role) {
+      case 'SUPER_ADMIN':
       case 'ADMIN':
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">
             <Shield className="w-3 h-3 text-purple-600" />
-            Admin
+            {role === 'SUPER_ADMIN' ? 'Super Admin' : 'Admin'}
+          </span>
+        );
+      case 'PROJECT_MANAGER':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+            <Briefcase className="w-3 h-3 text-blue-600" />
+            Chef de Projet
           </span>
         );
       case 'DEV':
@@ -72,7 +80,7 @@ export const AdminUsersTable: React.FC<AdminUsersTableProps> = ({ onOpenCreateUs
   };
 
   const getAssignedProjectsCount = (user: User) => {
-    if (user.role === 'ADMIN') {
+    if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN' || user.role === 'PROJECT_MANAGER') {
       return `${projects.length} (Totalité)`;
     }
     if (user.role === 'DEV') {
@@ -129,7 +137,9 @@ export const AdminUsersTable: React.FC<AdminUsersTableProps> = ({ onOpenCreateUs
             className="bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-slate-900 w-full md:w-auto"
           >
             <option value="ALL">Tous les rôles ({users.length})</option>
+            <option value="SUPER_ADMIN">Super Admins ({users.filter((u) => u.role === 'SUPER_ADMIN').length})</option>
             <option value="ADMIN">Administrateurs ({users.filter((u) => u.role === 'ADMIN').length})</option>
+            <option value="PROJECT_MANAGER">Chefs de Projet ({users.filter((u) => u.role === 'PROJECT_MANAGER').length})</option>
             <option value="DEV">Développeurs ({users.filter((u) => u.role === 'DEV').length})</option>
             <option value="CLIENT">Clients ({users.filter((u) => u.role === 'CLIENT').length})</option>
           </select>
@@ -205,7 +215,9 @@ export const AdminUsersTable: React.FC<AdminUsersTableProps> = ({ onOpenCreateUs
                         }}
                         className="bg-white border border-slate-300 hover:border-slate-400 rounded-lg px-2.5 py-1 text-xs text-slate-900 focus:outline-none focus:border-slate-900"
                       >
+                        <option value="SUPER_ADMIN">SUPER_ADMIN</option>
                         <option value="ADMIN">ADMIN</option>
+                        <option value="PROJECT_MANAGER">PROJECT_MANAGER</option>
                         <option value="DEV">DEV</option>
                         <option value="CLIENT">CLIENT</option>
                       </select>

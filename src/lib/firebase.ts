@@ -51,6 +51,57 @@ const STATE_DOC_REF = () => doc(db, 'app_state', 'global_workspace');
 const RTDB_STATE_PATH = 'app_state/global_workspace';
 
 /**
+ * Sauvegarde un utilisateur spécifique directement dans Firestore et Realtime Database
+ */
+export async function saveUserDirectlyToFirebase(user: User): Promise<void> {
+  if (!user || !user.id) return;
+  const cleanUser: User = {
+    ...user,
+    email: user.email.trim().toLowerCase(),
+    password: user.password ? user.password.trim() : 'Nexa2026!',
+    created_at: user.created_at || new Date().toISOString(),
+  };
+
+  // 1. Firestore 'users' collection
+  try {
+    const userRef = doc(db, 'users', cleanUser.id);
+    await setDoc(userRef, cleanUser, { merge: true });
+  } catch (err) {
+    console.warn('Erreur setDoc Firestore user:', err);
+  }
+
+  // 2. Realtime Database 'users' path
+  if (rtdb) {
+    try {
+      await rtdbSet(rtdbRef(rtdb, `users/${cleanUser.id}`), cleanUser);
+    } catch (err) {
+      // RTDB fallback
+    }
+  }
+}
+
+/**
+ * Charge tous les utilisateurs depuis la collection Firestore 'users'.
+ */
+export async function loadAllUsersFromFirebase(): Promise<User[]> {
+  const usersList: User[] = [];
+  try {
+    const snap = await getDocs(collection(db, 'users'));
+    snap.forEach((docSnap) => {
+      if (docSnap.exists()) {
+        const u = docSnap.data() as User;
+        if (u && u.id && u.email) {
+          usersList.push(u);
+        }
+      }
+    });
+  } catch (err) {
+    console.warn('Erreur loadAllUsersFromFirebase:', err);
+  }
+  return usersList;
+}
+
+/**
  * Synchronise l'état global du workspace dans Firestore (collections & doc) et Realtime Database.
  */
 export async function syncWorkspaceToFirebase(state: Record<string, any>): Promise<void> {
@@ -255,5 +306,40 @@ export function subscribeToFirebaseWorkspace(
       } catch (err) {}
     });
   };
+}
+
+/**
+ * Écoute en temps réel la collection Firestore 'users'
+ */
+export function subscribeToFirebaseUsers(
+  callback: (users: User[]) => void
+): () => void {
+  try {
+    const usersCol = collection(db, 'users');
+    const unsubscribe = onSnapshot(
+      usersCol,
+      (snapshot) => {
+        const usersList: User[] = [];
+        snapshot.forEach((docSnap) => {
+          if (docSnap.exists()) {
+            const u = docSnap.data() as User;
+            if (u && u.id && u.email) {
+              usersList.push(u);
+            }
+          }
+        });
+        if (usersList.length > 0) {
+          callback(usersList);
+        }
+      },
+      (error) => {
+        console.warn('Flux collection users Firestore interrompu:', error);
+      }
+    );
+    return unsubscribe;
+  } catch (err) {
+    console.warn('Erreur subscribeToFirebaseUsers:', err);
+    return () => {};
+  }
 }
 
