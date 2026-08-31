@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import {
   syncWorkspaceToFirebase,
   loadWorkspaceFromFirebase,
@@ -300,9 +300,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
+  const isRemoteUpdateRef = useRef(false);
+  const lastSyncedHashRef = useRef('');
+
   // Helper function to apply synchronized database state
   const applyRemoteState = (data: any) => {
     if (!data) return;
+    isRemoteUpdateRef.current = true;
     if (Array.isArray(data.users) && data.users.length > 0) {
       setUsers((currentUsers) => {
         const serverMap = new Map(data.users.map((u: User) => [u.id, u]));
@@ -402,7 +406,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
   }, []);
 
-  // 2. Continuous Sync: write to Firebase Firestore, LocalStorage & Server on change
+  // 2. Continuous Sync: write to LocalStorage, Firebase & Server on change (Debounced & loop-protected)
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
@@ -422,6 +426,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       console.error('LocalStorage sync error', e);
     }
 
+    // If change was triggered by remote incoming update, do not ping-pong write back
+    if (isRemoteUpdateRef.current) {
+      isRemoteUpdateRef.current = false;
+      return;
+    }
+
     const dbPayload = {
       users,
       projects,
@@ -435,15 +445,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       devRates,
     };
 
-    // Sync to Cloud Firebase Firestore
-    syncWorkspaceToFirebase(dbPayload);
+    const currentHash = `${users.length}_${projects.length}_${projectMembers.length}_${tasks.length}_${milestones.length}_${timeLogs.length}_${invoices.length}_${contracts.length}_${currentUser?.id || ''}`;
+    if (currentHash === lastSyncedHashRef.current) {
+      return;
+    }
 
-    // Sync to Server API fallback
-    fetch('/api/sync', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(dbPayload),
-    }).catch(() => {});
+    // Debounce network sync by 1500ms to preserve quota and avoid loops
+    const timer = setTimeout(() => {
+      lastSyncedHashRef.current = currentHash;
+
+      // Sync to Cloud Firebase Firestore
+      syncWorkspaceToFirebase(dbPayload);
+
+      // Sync to Server API fallback
+      fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dbPayload),
+      }).catch(() => {});
+    }, 1500);
+
+    return () => clearTimeout(timer);
   }, [users, projects, projectMembers, tasks, milestones, timeLogs, invoices, contracts, devProfiles, devRates, currentUser]);
 
   // Toast Helpers

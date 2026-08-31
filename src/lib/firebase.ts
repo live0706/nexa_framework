@@ -42,13 +42,29 @@ let rtdbInstance: Database | null = null;
 try {
   rtdbInstance = getDatabase(app);
 } catch (e) {
-  console.warn('Realtime Database fallback warning:', e);
+  // Realtime database optional fallback
 }
 
 export const rtdb = rtdbInstance;
 
 const STATE_DOC_REF = () => doc(db, 'app_state', 'global_workspace');
 const RTDB_STATE_PATH = 'app_state/global_workspace';
+
+// Circuit breaker to protect from quota exhaustion
+let isFirestoreQuotaExceeded = false;
+
+function handleFirestoreError(err: any, context: string): void {
+  const errMsg = err?.message || String(err);
+  const errCode = err?.code || '';
+  if (errCode === 'resource-exhausted' || errMsg.includes('Quota limit exceeded') || errMsg.includes('resource-exhausted')) {
+    if (!isFirestoreQuotaExceeded) {
+      isFirestoreQuotaExceeded = true;
+      console.warn(`[Firebase Firestore] Quota journalier atteint (${context}). Passage transparent en mode Local & Serveur.`);
+    }
+  } else {
+    console.warn(`[Firebase] Erreur (${context}):`, errMsg);
+  }
+}
 
 /**
  * Sauvegarde un utilisateur spécifique directement dans Firestore et Realtime Database
@@ -62,20 +78,22 @@ export async function saveUserDirectlyToFirebase(user: User): Promise<void> {
     created_at: user.created_at || new Date().toISOString(),
   };
 
-  // 1. Firestore 'users' collection
-  try {
-    const userRef = doc(db, 'users', cleanUser.id);
-    await setDoc(userRef, cleanUser, { merge: true });
-  } catch (err) {
-    console.warn('Erreur setDoc Firestore user:', err);
-  }
-
-  // 2. Realtime Database 'users' path
+  // 1. Realtime Database 'users' path
   if (rtdb) {
     try {
       await rtdbSet(rtdbRef(rtdb, `users/${cleanUser.id}`), cleanUser);
     } catch (err) {
       // RTDB fallback
+    }
+  }
+
+  // 2. Firestore 'users' collection (if quota not exceeded)
+  if (!isFirestoreQuotaExceeded) {
+    try {
+      const userRef = doc(db, 'users', cleanUser.id);
+      await setDoc(userRef, cleanUser, { merge: true });
+    } catch (err) {
+      handleFirestoreError(err, 'saveUserDirectlyToFirebase');
     }
   }
 }
@@ -84,6 +102,7 @@ export async function saveUserDirectlyToFirebase(user: User): Promise<void> {
  * Charge tous les utilisateurs depuis la collection Firestore 'users'.
  */
 export async function loadAllUsersFromFirebase(): Promise<User[]> {
+  if (isFirestoreQuotaExceeded) return [];
   const usersList: User[] = [];
   try {
     const snap = await getDocs(collection(db, 'users'));
@@ -96,13 +115,14 @@ export async function loadAllUsersFromFirebase(): Promise<User[]> {
       }
     });
   } catch (err) {
-    console.warn('Erreur loadAllUsersFromFirebase:', err);
+    handleFirestoreError(err, 'loadAllUsersFromFirebase');
   }
   return usersList;
 }
 
 /**
- * Synchronise l'état global du workspace dans Firestore (collections & doc) et Realtime Database.
+ * Synchronise l'état global du workspace dans Realtime Database et Firestore.
+ * N'exécute qu'une seule écriture globale atomique pour préserver les quotas.
  */
 export async function syncWorkspaceToFirebase(state: Record<string, any>): Promise<void> {
   const payload = {
@@ -110,49 +130,7 @@ export async function syncWorkspaceToFirebase(state: Record<string, any>): Promi
     updated_at: new Date().toISOString(),
   };
 
-  // 1. Sauvegarder chaque utilisateur individuellement dans la collection Firestore "users"
-  if (Array.isArray(state.users)) {
-    for (const user of state.users as User[]) {
-      if (user && user.id) {
-        try {
-          await setDoc(doc(db, 'users', user.id), {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            password: user.password || 'Nexa2026!',
-            job_title: user.job_title || '',
-            avatar: user.avatar || '',
-            created_at: user.created_at || new Date().toISOString(),
-          }, { merge: true });
-
-          if (rtdb) {
-            await rtdbSet(rtdbRef(rtdb, `users/${user.id}`), user);
-          }
-        } catch (err) {
-          console.warn('Erreur écriture user Firestore:', err);
-        }
-      }
-    }
-  }
-
-  // 2. Sauvegarder chaque projet dans la collection Firestore "projects"
-  if (Array.isArray(state.projects)) {
-    for (const proj of state.projects as Project[]) {
-      if (proj && proj.id) {
-        try {
-          await setDoc(doc(db, 'projects', proj.id), proj, { merge: true });
-          if (rtdb) {
-            await rtdbSet(rtdbRef(rtdb, `projects/${proj.id}`), proj);
-          }
-        } catch (err) {
-          console.warn('Erreur écriture projet Firestore:', err);
-        }
-      }
-    }
-  }
-
-  // 3. Sauvegarder l'état global complet dans Firebase Realtime Database
+  // 1. Sauvegarder l'état global complet dans Firebase Realtime Database
   if (rtdb) {
     try {
       const dbRef = rtdbRef(rtdb, RTDB_STATE_PATH);
@@ -162,12 +140,14 @@ export async function syncWorkspaceToFirebase(state: Record<string, any>): Promi
     }
   }
 
-  // 4. Sauvegarder l'état global complet dans Firestore document app_state
-  try {
-    const docRef = STATE_DOC_REF();
-    await setDoc(docRef, payload, { merge: true });
-  } catch (error) {
-    console.warn('Erreur de synchronisation Firestore app_state:', error);
+  // 2. Sauvegarder dans Firestore document app_state (si quota disponible)
+  if (!isFirestoreQuotaExceeded) {
+    try {
+      const docRef = STATE_DOC_REF();
+      await setDoc(docRef, payload, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, 'syncWorkspaceToFirebase');
+    }
   }
 }
 
@@ -175,25 +155,46 @@ export async function syncWorkspaceToFirebase(state: Record<string, any>): Promi
  * Supprime un utilisateur de Firestore et Realtime Database
  */
 export async function deleteUserFromFirebase(userId: string): Promise<void> {
-  try {
-    await deleteDoc(doc(db, 'users', userId));
-    if (rtdb) {
+  if (rtdb) {
+    try {
       await rtdbSet(rtdbRef(rtdb, `users/${userId}`), null);
+    } catch (err) {}
+  }
+  if (!isFirestoreQuotaExceeded) {
+    try {
+      await deleteDoc(doc(db, 'users', userId));
+    } catch (err) {
+      handleFirestoreError(err, 'deleteUserFromFirebase');
     }
-  } catch (err) {
-    console.warn('Erreur suppression utilisateur Firebase:', err);
   }
 }
 
 /**
  * Recherche directe d'un utilisateur par son e-mail sur Firebase (Firestore & RTDB)
- * Utilisé pour une connexion mobile infaillible même si le state local n'a pas encore chargé.
  */
 export async function fetchUserByEmailFromFirebase(email: string): Promise<User | null> {
   const cleanEmail = email.trim().toLowerCase();
 
+  // 1. Essai Realtime Database
+  if (rtdb) {
+    try {
+      const dbRef = rtdbRef(rtdb, `users`);
+      const snap = await rtdbGet(dbRef);
+      if (snap.exists()) {
+        const usersObj = snap.val();
+        if (usersObj && typeof usersObj === 'object') {
+          const list = Object.values(usersObj) as User[];
+          const found = list.find((u) => u && u.email && u.email.trim().toLowerCase() === cleanEmail);
+          if (found) return found;
+        }
+      }
+    } catch (e) {}
+  }
+
+  if (isFirestoreQuotaExceeded) return null;
+
+  // 2. Lire depuis la collection Firestore 'users'
   try {
-    // 1. Lire depuis la collection Firestore 'users'
     const usersCol = collection(db, 'users');
     const snap = await getDocs(usersCol);
     for (const docSnap of snap.docs) {
@@ -203,10 +204,10 @@ export async function fetchUserByEmailFromFirebase(email: string): Promise<User 
       }
     }
   } catch (err) {
-    console.warn('Erreur recherche collection users Firestore:', err);
+    handleFirestoreError(err, 'fetchUserByEmailFromFirebase (users)');
   }
 
-  // 2. Lire depuis le doc global app_state
+  // 3. Lire depuis le doc global app_state
   try {
     const stateDoc = await getDoc(STATE_DOC_REF());
     if (stateDoc.exists()) {
@@ -219,7 +220,7 @@ export async function fetchUserByEmailFromFirebase(email: string): Promise<User 
       }
     }
   } catch (err) {
-    console.warn('Erreur recherche app_state Firestore:', err);
+    handleFirestoreError(err, 'fetchUserByEmailFromFirebase (app_state)');
   }
 
   return null;
