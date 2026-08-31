@@ -33,6 +33,7 @@ async function startServer() {
 
     const db = getDatabase();
     const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
     const user = db.users.find(
       (u) => u.email.toLowerCase() === cleanEmail
     );
@@ -42,8 +43,20 @@ async function startServer() {
     }
 
     // Check password
-    const expectedPassword = user.password || (user.role === 'SUPER_ADMIN' ? 'Adm@n2026' : 'Nexa2026!');
-    if (user.password && user.password !== password) {
+    const expectedPassword = (
+      user.password ||
+      (user.role === 'SUPER_ADMIN'
+        ? 'Adm@n2026'
+        : user.role === 'PROJECT_MANAGER'
+        ? 'Pm@2026'
+        : user.role === 'DEV'
+        ? 'Dev@2026'
+        : user.role === 'CLIENT'
+        ? 'Client@2026'
+        : 'Nexa2026!')
+    ).trim();
+
+    if (cleanPassword !== expectedPassword) {
       return res.status(401).json({ error: 'Mot de passe incorrect.' });
     }
 

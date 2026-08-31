@@ -3,6 +3,8 @@ import {
   syncWorkspaceToFirebase,
   loadWorkspaceFromFirebase,
   subscribeToFirebaseWorkspace,
+  fetchUserByEmailFromFirebase,
+  deleteUserFromFirebase,
 } from '../lib/firebase';
 import {
   User,
@@ -424,7 +426,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
 
-    // 1. Try server API
+    // 1. Try server API first
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
@@ -434,7 +436,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (res.ok) {
         const data = await res.json();
         if (data.user) {
-          // Find user in full state to retain all attributes
           const fullUser = users.find((u) => u.id === data.user.id) || data.user;
           setCurrentUser(fullUser);
           if (fullUser.role === 'SUPER_ADMIN' || fullUser.role === 'ADMIN' || fullUser.role === 'PROJECT_MANAGER') {
@@ -449,17 +450,44 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
       }
     } catch {
-      // Local fallback
+      // Local / Cloud fallback
     }
 
-    // 2. Fallback to local users list
-    const matched = users.find((u) => u.email.trim().toLowerCase() === cleanEmail);
+    // 2. Find in local users state or query directly from Cloud Firebase (Firestore & RTDB)
+    let matched = users.find((u) => u.email.trim().toLowerCase() === cleanEmail);
+
+    if (!matched) {
+      // Direct live lookup in Firestore collection / app_state
+      const remoteUser = await fetchUserByEmailFromFirebase(cleanEmail);
+      if (remoteUser) {
+        matched = remoteUser;
+        setUsers((prev) => {
+          if (!prev.some((u) => u.id === remoteUser.id)) {
+            return [...prev, remoteUser];
+          }
+          return prev;
+        });
+      }
+    }
+
     if (!matched) {
       showToast('Échec de connexion', 'Identifiant introuvable ou incorrect.', 'error');
       return false;
     }
 
-    const expectedPassword = (matched.password || (matched.role === 'SUPER_ADMIN' ? 'Adm@n2026' : (matched.role === 'PROJECT_MANAGER' ? 'Pm@2026' : (matched.role === 'DEV' ? 'Dev@2026' : 'Client@2026')))).trim();
+    const expectedPassword = (
+      matched.password ||
+      (matched.role === 'SUPER_ADMIN'
+        ? 'Adm@n2026'
+        : matched.role === 'PROJECT_MANAGER'
+        ? 'Pm@2026'
+        : matched.role === 'DEV'
+        ? 'Dev@2026'
+        : matched.role === 'CLIENT'
+        ? 'Client@2026'
+        : 'Nexa2026!')
+    ).trim();
+
     if (cleanPassword !== expectedPassword) {
       showToast('Mot de passe incorrect', 'Vérifiez le mot de passe saisi pour ce compte.', 'error');
       return false;
@@ -569,6 +597,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
     setUsers((prev) => prev.filter((u) => u.id !== userId));
     setProjectMembers((prev) => prev.filter((m) => m.user_id !== userId));
+    deleteUserFromFirebase(userId);
     showToast('Utilisateur supprimé', 'Le compte et ses assignations ont été retirés.', 'warning');
   };
 
