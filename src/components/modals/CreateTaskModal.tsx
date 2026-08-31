@@ -99,22 +99,31 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs">
-          {/* Project select */}
-          <div>
-            <label className="block text-slate-800 font-semibold mb-1">Projet</label>
-            <select
-              id="select-task-project"
-              value={projectId}
-              onChange={(e) => setProjectId(e.target.value)}
-              className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-slate-900"
-            >
-              {accessibleProjects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {accessibleProjects.length === 0 ? (
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs">
+              <p className="font-semibold mb-1">Aucun projet actif</p>
+              <p>Veuillez d'abord créer un projet depuis le tableau de bord avant d'y ajouter des tâches.</p>
+            </div>
+          ) : (
+            <>
+              {/* Project select */}
+              <div>
+                <label className="block text-slate-800 font-semibold mb-1">Projet *</label>
+                <select
+                  id="select-task-project"
+                  value={projectId}
+                  onChange={(e) => setProjectId(e.target.value)}
+                  className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-slate-900"
+                >
+                  {accessibleProjects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
 
           {/* Title */}
           <div>
@@ -247,7 +256,8 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             <button
               id="btn-submit-create-task"
               type="submit"
-              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg flex items-center gap-1.5 shadow-xs transition-colors"
+              disabled={accessibleProjects.length === 0}
+              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
             >
               <CheckCircle2 className="w-4 h-4" />
               Créer la tâche

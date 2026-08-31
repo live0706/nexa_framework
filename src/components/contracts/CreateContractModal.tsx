@@ -210,11 +210,18 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
                 onChange={(e) => setProjectId(e.target.value)}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-medium text-slate-900"
               >
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
+                {projects.length === 0 ? (
+                  <option value="">-- Aucun projet créé (Optionnel) --</option>
+                ) : (
+                  <>
+                    <option value="">Sélectionner un projet...</option>
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </>
+                )}
               </select>
             </div>
 
@@ -249,27 +256,41 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
               </label>
               {type === 'DEV_SERVICE_CONTRACT' ? (
                 <select
-                  value={devId || selectedDev?.id}
+                  value={devId}
                   onChange={(e) => setDevId(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-medium text-slate-900"
                 >
-                  {devs.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name} ({d.job_title})
-                    </option>
-                  ))}
+                  {devs.length === 0 ? (
+                    <option value="">-- Aucun développeur créé --</option>
+                  ) : (
+                    <>
+                      <option value="">Sélectionner un développeur...</option>
+                      {devs.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.name} ({d.job_title || 'Dev'})
+                        </option>
+                      ))}
+                    </>
+                  )}
                 </select>
               ) : (
                 <select
-                  value={clientId || selectedClient?.id}
+                  value={clientId}
                   onChange={(e) => setClientId(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-medium text-slate-900"
                 >
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.job_title})
-                    </option>
-                  ))}
+                  {clients.length === 0 ? (
+                    <option value="">-- Aucun client créé --</option>
+                  ) : (
+                    <>
+                      <option value="">Sélectionner un client...</option>
+                      {clients.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} ({c.job_title || 'Client'})
+                        </option>
+                      ))}
+                    </>
+                  )}
                 </select>
               )}
             </div>

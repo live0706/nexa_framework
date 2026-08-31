@@ -72,7 +72,9 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !clientId) return;
+    if (!name.trim()) return;
+
+    const finalClientId = clientId || (clients[0]?.id || 'client_unassigned');
 
     if (initialProject) {
       updateProject(
@@ -80,7 +82,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
         {
           name: name.trim(),
           description: description.trim(),
-          client_id: clientId,
+          client_id: finalClientId,
           status,
           deadline,
           category,
@@ -92,7 +94,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
         {
           name: name.trim(),
           description: description.trim(),
-          client_id: clientId,
+          client_id: finalClientId,
           status,
           deadline,
           category,
@@ -155,20 +157,26 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
             {/* Client Assignment */}
             <div>
               <label className="block text-slate-800 font-semibold mb-1 flex items-center gap-1.5">
-                <Building className="w-3.5 h-3.5 text-amber-600" /> Client Assigné (RBAC) *
+                <Building className="w-3.5 h-3.5 text-amber-600" /> Client Assigné (RBAC)
               </label>
               <select
                 id="select-project-client-modal"
                 value={clientId}
                 onChange={(e) => setClientId(e.target.value)}
-                required
                 className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-slate-900"
               >
-                {clients.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.job_title || 'Client'})
-                  </option>
-                ))}
+                {clients.length === 0 ? (
+                  <option value="">-- Aucun compte Client (à créer dans Utilisateurs) --</option>
+                ) : (
+                  <>
+                    <option value="">Sélectionner un client...</option>
+                    {clients.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.job_title || 'Client'})
+                      </option>
+                    ))}
+                  </>
+                )}
               </select>
             </div>
 
@@ -226,37 +234,43 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
               <Users className="w-3.5 h-3.5 text-emerald-600" />
               Développeurs Assignés au Projet (Contrôle d'accès RBAC)
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {devs.map((dev) => {
-                const isSelected = selectedDevIds.includes(dev.id);
-                return (
-                  <button
-                    key={dev.id}
-                    type="button"
-                    id={`toggle-dev-member-${dev.id}`}
-                    onClick={() => toggleDevSelection(dev.id)}
-                    className={`p-2.5 rounded-xl border text-left flex items-center justify-between gap-2 transition-all ${
-                      isSelected
-                        ? 'bg-emerald-50 border-emerald-300 text-emerald-900 shadow-xs'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <img src={dev.avatar} alt={dev.name} className="w-6 h-6 rounded-full object-cover shrink-0" />
-                      <div className="truncate">
-                        <p className="font-semibold text-slate-900 text-xs truncate">{dev.name}</p>
-                        <p className="text-[10px] text-slate-500 truncate">{dev.job_title}</p>
+            {devs.length === 0 ? (
+              <div className="p-3 bg-slate-50 border border-dashed border-slate-300 rounded-xl text-slate-500 text-[11px]">
+                Aucun développeur enregistré pour le moment. Vous pourrez créer des comptes Développeurs et les assigner plus tard.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {devs.map((dev) => {
+                  const isSelected = selectedDevIds.includes(dev.id);
+                  return (
+                    <button
+                      key={dev.id}
+                      type="button"
+                      id={`toggle-dev-member-${dev.id}`}
+                      onClick={() => toggleDevSelection(dev.id)}
+                      className={`p-2.5 rounded-xl border text-left flex items-center justify-between gap-2 transition-all ${
+                        isSelected
+                          ? 'bg-emerald-50 border-emerald-300 text-emerald-900 shadow-xs'
+                          : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <img src={dev.avatar} alt={dev.name} className="w-6 h-6 rounded-full object-cover shrink-0" />
+                        <div className="truncate">
+                          <p className="font-semibold text-slate-900 text-xs truncate">{dev.name}</p>
+                          <p className="text-[10px] text-slate-500 truncate">{dev.job_title}</p>
+                        </div>
                       </div>
-                    </div>
-                    {isSelected && (
-                      <div className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0">
-                        <Check className="w-3 h-3 stroke-[3]" />
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+                      {isSelected && (
+                        <div className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                          <Check className="w-3 h-3 stroke-[3]" />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             <p className="text-[11px] text-slate-500 mt-1.5">
               Seuls les développeurs sélectionnés auront accès au Kanban et aux tâches de ce projet.
             </p>

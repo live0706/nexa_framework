@@ -240,71 +240,91 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-500 font-medium pb-2">
-                  <th className="pb-2.5 font-semibold">Projet</th>
-                  <th className="pb-2.5 font-semibold">Statut</th>
-                  <th className="pb-2.5 font-semibold">Client</th>
-                  <th className="pb-2.5 font-semibold">Échéance</th>
-                  <th className="pb-2.5 font-semibold">Avancement</th>
-                  <th className="pb-2.5 text-right font-semibold">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {projects.map((project) => {
-                  const client = users.find((u) => u.id === project.client_id);
-                  return (
-                    <tr key={project.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="py-3 pr-2">
-                        <div className="font-semibold text-slate-900">{project.name}</div>
-                        <div className="text-[11px] text-slate-500 truncate max-w-xs">{project.description}</div>
-                      </td>
-                      <td className="py-3 px-2 whitespace-nowrap">
-                        {getStatusBadge(project.status)}
-                      </td>
-                      <td className="py-3 px-2 whitespace-nowrap">
-                        <span className="text-slate-800 font-medium">{client ? client.name : 'Non assigné'}</span>
-                      </td>
-                      <td className="py-3 px-2 whitespace-nowrap text-slate-600 font-mono text-[11px]">
-                        {new Date(project.deadline).toLocaleDateString('fr-FR')}
-                      </td>
-                      <td className="py-3 px-2 w-32">
-                        <div className="flex items-center justify-between text-[11px] mb-1">
-                          <span className="font-mono text-slate-700 font-semibold">{project.progress_percent}%</span>
-                        </div>
-                        <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${
-                              project.progress_percent >= 80
-                                ? 'bg-emerald-600'
-                                : project.progress_percent >= 40
-                                ? 'bg-indigo-600'
-                                : 'bg-amber-600'
-                            }`}
-                            style={{ width: `${project.progress_percent}%` }}
-                          />
-                        </div>
-                      </td>
-                      <td className="py-3 pl-2 text-right whitespace-nowrap">
-                        <button
-                          id={`btn-open-project-${project.id}`}
-                          onClick={() => {
-                            setSelectedProjectId(project.id);
-                            setAdminTab('projects');
-                          }}
-                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded text-[11px] font-medium transition-colors border border-slate-200"
-                        >
-                          Détails
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          {projects.length === 0 ? (
+            <div className="py-12 flex flex-col items-center justify-center text-center px-4 bg-slate-50/50 rounded-xl border border-dashed border-slate-200 my-2">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center mb-3">
+                <FolderKanban className="w-6 h-6" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-900 mb-1">Aucun projet pour le moment</h3>
+              <p className="text-xs text-slate-500 max-w-sm mb-4">
+                Votre espace est totalement vierge et prêt. Commencez par créer votre premier projet pour assigner des développeurs et des tâches.
+              </p>
+              <button
+                id="btn-admin-empty-create-project"
+                onClick={onOpenCreateProject}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                Créer un Premier Projet
+              </button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 text-slate-500 font-medium pb-2">
+                    <th className="pb-2.5 font-semibold">Projet</th>
+                    <th className="pb-2.5 font-semibold">Statut</th>
+                    <th className="pb-2.5 font-semibold">Client</th>
+                    <th className="pb-2.5 font-semibold">Échéance</th>
+                    <th className="pb-2.5 font-semibold">Avancement</th>
+                    <th className="pb-2.5 text-right font-semibold">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {projects.map((project) => {
+                    const client = users.find((u) => u.id === project.client_id);
+                    return (
+                      <tr key={project.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="py-3 pr-2">
+                          <div className="font-semibold text-slate-900">{project.name}</div>
+                          <div className="text-[11px] text-slate-500 truncate max-w-xs">{project.description}</div>
+                        </td>
+                        <td className="py-3 px-2 whitespace-nowrap">
+                          {getStatusBadge(project.status)}
+                        </td>
+                        <td className="py-3 px-2 whitespace-nowrap">
+                          <span className="text-slate-800 font-medium">{client ? client.name : 'Non assigné'}</span>
+                        </td>
+                        <td className="py-3 px-2 whitespace-nowrap text-slate-600 font-mono text-[11px]">
+                          {new Date(project.deadline).toLocaleDateString('fr-FR')}
+                        </td>
+                        <td className="py-3 px-2 w-32">
+                          <div className="flex items-center justify-between text-[11px] mb-1">
+                            <span className="font-mono text-slate-700 font-semibold">{project.progress_percent}%</span>
+                          </div>
+                          <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${
+                                project.progress_percent >= 80
+                                  ? 'bg-emerald-600'
+                                  : project.progress_percent >= 40
+                                  ? 'bg-indigo-600'
+                                  : 'bg-amber-600'
+                              }`}
+                              style={{ width: `${project.progress_percent}%` }}
+                            />
+                          </div>
+                        </td>
+                        <td className="py-3 pl-2 text-right whitespace-nowrap">
+                          <button
+                            id={`btn-open-project-${project.id}`}
+                            onClick={() => {
+                              setSelectedProjectId(project.id);
+                              setAdminTab('projects');
+                            }}
+                            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded text-[11px] font-medium transition-colors border border-slate-200 cursor-pointer"
+                          >
+                            Détails
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* Right Column: User distribution & Team overview */}

@@ -66,6 +66,7 @@ interface AppContextType {
 
   // Auth & RBAC actions
   login: (userId: string) => void;
+  loginWithCredentials: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   switchUser: (userId: string) => void;
 
@@ -134,17 +135,17 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
-  CURRENT_USER_ID: 'intranet_rbac_current_user_id',
-  USERS: 'intranet_rbac_users',
-  PROJECTS: 'intranet_rbac_projects',
-  MEMBERS: 'intranet_rbac_members',
-  TASKS: 'intranet_rbac_tasks',
-  MILESTONES: 'intranet_rbac_milestones',
-  TIMELOGS: 'intranet_rbac_timelogs',
-  INVOICES: 'intranet_rbac_invoices',
-  CONTRACTS: 'intranet_rbac_contracts',
-  DEV_PROFILES: 'intranet_rbac_dev_profiles',
-  DEV_RATES: 'intranet_rbac_dev_rates',
+  CURRENT_USER_ID: 'nexa_clean_v1_current_user_id',
+  USERS: 'nexa_clean_v1_users',
+  PROJECTS: 'nexa_clean_v1_projects',
+  MEMBERS: 'nexa_clean_v1_members',
+  TASKS: 'nexa_clean_v1_tasks',
+  MILESTONES: 'nexa_clean_v1_milestones',
+  TIMELOGS: 'nexa_clean_v1_timelogs',
+  INVOICES: 'nexa_clean_v1_invoices',
+  CONTRACTS: 'nexa_clean_v1_contracts',
+  DEV_PROFILES: 'nexa_clean_v1_dev_profiles',
+  DEV_RATES: 'nexa_clean_v1_dev_rates',
 };
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -152,7 +153,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [users, setUsers] = useState<User[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.USERS);
-      return saved ? JSON.parse(saved) : INITIAL_USERS;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      return INITIAL_USERS;
     } catch {
       return INITIAL_USERS;
     }
@@ -161,10 +166,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     try {
       const savedId = localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID);
-      const matched = users.find((u) => u.id === savedId);
-      return matched || users[0] || null;
+      if (savedId) {
+        const matched = users.find((u) => u.id === savedId);
+        if (matched) return matched;
+      }
+      return null; // Require login
     } catch {
-      return users[0] || null;
+      return null;
     }
   });
 
@@ -258,6 +266,32 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
+  // Sync with Server Database on boot
+  useEffect(() => {
+    fetch('/api/sync')
+      .then((res) => {
+        if (res.ok) return res.json();
+        throw new Error('API offline');
+      })
+      .then((data) => {
+        if (data && data.users && data.projects) {
+          setUsers(data.users);
+          setProjects(data.projects);
+          setProjectMembers(data.projectMembers || []);
+          setTasks(data.tasks || []);
+          setMilestones(data.milestones || []);
+          setTimeLogs(data.timeLogs || []);
+          setInvoices(data.invoices || []);
+          setContracts(data.contracts || []);
+          setDevProfiles(data.devProfiles || []);
+          setDevRates(data.devRates || []);
+        }
+      })
+      .catch((err) => {
+        console.log('Using local client storage fallback:', err.message);
+      });
+  }, []);
+
   // Sync to LocalStorage
   useEffect(() => {
     try {
@@ -305,9 +339,70 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
+  const loginWithCredentials = async (email: string, password: string): Promise<boolean> => {
+    const cleanEmail = email.trim().toLowerCase();
+
+    // 1. Try server API
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail, password }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.user) {
+          setCurrentUser(data.user);
+          if (data.user.role === 'SUPER_ADMIN' || data.user.role === 'ADMIN' || data.user.role === 'PROJECT_MANAGER') {
+            setAdminTab('dashboard');
+          } else if (data.user.role === 'DEV') {
+            setDevTab('my_projects');
+          } else if (data.user.role === 'CLIENT') {
+            setClientTab('overview');
+          }
+          showToast('Connexion réussie', `Bienvenue, ${data.user.name} (${data.user.role})`, 'success');
+          return true;
+        }
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        if (errData.error) {
+          showToast('Échec de connexion', errData.error, 'error');
+          return false;
+        }
+      }
+    } catch {
+      // Local fallback
+    }
+
+    // 2. Fallback to local users list
+    const matched = users.find((u) => u.email.toLowerCase() === cleanEmail);
+    if (!matched) {
+      showToast('Échec de connexion', 'Identifiant introuvable ou incorrect.', 'error');
+      return false;
+    }
+
+    const expectedPassword = matched.password || (matched.role === 'SUPER_ADMIN' ? 'Adm@n2026' : (matched.role === 'PROJECT_MANAGER' ? 'Pm@2026' : (matched.role === 'DEV' ? 'Dev@2026' : 'Client@2026')));
+    if (password !== expectedPassword) {
+      showToast('Mot de passe incorrect', 'Vérifiez le mot de passe saisi pour ce compte.', 'error');
+      return false;
+    }
+
+    setCurrentUser(matched);
+    if (matched.role === 'SUPER_ADMIN' || matched.role === 'ADMIN' || matched.role === 'PROJECT_MANAGER') {
+      setAdminTab('dashboard');
+    } else if (matched.role === 'DEV') {
+      setDevTab('my_projects');
+    } else if (matched.role === 'CLIENT') {
+      setClientTab('overview');
+    }
+    showToast('Connexion réussie', `Bienvenue, ${matched.name} (${matched.role})`, 'success');
+    return true;
+  };
+
   const logout = () => {
     setCurrentUser(null);
-    showToast('Déconnexion', 'Vous avez été déconnecté.', 'info');
+    localStorage.removeItem(STORAGE_KEYS.CURRENT_USER_ID);
+    showToast('Déconnexion', 'Vous avez été déconnecté avec succès.', 'info');
   };
 
   const switchUser = (userId: string) => {
@@ -990,6 +1085,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         selectedProjectId,
         setSelectedProjectId,
         login,
+        loginWithCredentials,
         logout,
         switchUser,
         createUser,
