@@ -1,5 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import {
+  syncWorkspaceToFirebase,
+  loadWorkspaceFromFirebase,
+  subscribeToFirebaseWorkspace,
+} from '../lib/firebase';
+import {
   User,
   Project,
   ProjectMember,
@@ -266,66 +271,86 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
-  // Sync with Server Database on boot & merge with local storage
-  useEffect(() => {
-    fetch('/api/sync')
-      .then((res) => {
-        if (res.ok) return res.json();
-        throw new Error('API offline');
-      })
-      .then((data) => {
-        if (data && Array.isArray(data.users) && data.users.length > 0) {
-          // Merge users: keep server users + any unique local users created offline
-          setUsers((currentUsers) => {
-            const serverMap = new Map(data.users.map((u: User) => [u.id, u]));
-            const localOnly = currentUsers.filter((u) => !serverMap.has(u.id));
-            return [...data.users, ...localOnly];
-          });
-
-          // Merge projects
-          setProjects((currentProjects) => {
-            const serverMap = new Map(data.projects.map((p: Project) => [p.id, p]));
-            const localOnly = currentProjects.filter((p) => !serverMap.has(p.id));
-            return [...data.projects, ...localOnly];
-          });
-
-          if (Array.isArray(data.projectMembers)) {
-            setProjectMembers((currentMembers) => {
-              const serverMap = new Map(data.projectMembers.map((m: ProjectMember) => [m.id, m]));
-              const localOnly = currentMembers.filter((m) => !serverMap.has(m.id));
-              return [...data.projectMembers, ...localOnly];
-            });
-          }
-
-          if (Array.isArray(data.tasks)) {
-            setTasks((currentTasks) => {
-              const serverMap = new Map(data.tasks.map((t: Task) => [t.id, t]));
-              const localOnly = currentTasks.filter((t) => !serverMap.has(t.id));
-              return [...data.tasks, ...localOnly];
-            });
-          }
-
-          if (Array.isArray(data.milestones)) {
-            setMilestones((currentM) => {
-              const serverMap = new Map(data.milestones.map((m: Milestone) => [m.id, m]));
-              const localOnly = currentM.filter((m) => !serverMap.has(m.id));
-              return [...data.milestones, ...localOnly];
-            });
-          }
-
-          if (Array.isArray(data.timeLogs)) setTimeLogs(data.timeLogs);
-          if (Array.isArray(data.invoices)) setInvoices(data.invoices);
-          if (Array.isArray(data.contracts)) setContracts(data.contracts);
-          if (Array.isArray(data.devProfiles)) setDevProfiles(data.devProfiles);
-          if (Array.isArray(data.devRates)) setDevRates(data.devRates);
-        }
-      })
-      .catch((err) => {
-        console.log('Using persistent local client storage fallback:', err.message);
+  // Helper function to apply synchronized database state
+  const applyRemoteState = (data: any) => {
+    if (!data) return;
+    if (Array.isArray(data.users) && data.users.length > 0) {
+      setUsers((currentUsers) => {
+        const serverMap = new Map(data.users.map((u: User) => [u.id, u]));
+        const localOnly = currentUsers.filter((u) => !serverMap.has(u.id));
+        return [...data.users, ...localOnly];
       });
+    }
+
+    if (Array.isArray(data.projects) && data.projects.length > 0) {
+      setProjects((currentProjects) => {
+        const serverMap = new Map(data.projects.map((p: Project) => [p.id, p]));
+        const localOnly = currentProjects.filter((p) => !serverMap.has(p.id));
+        return [...data.projects, ...localOnly];
+      });
+    }
+
+    if (Array.isArray(data.projectMembers)) {
+      setProjectMembers((currentMembers) => {
+        const serverMap = new Map(data.projectMembers.map((m: ProjectMember) => [m.id, m]));
+        const localOnly = currentMembers.filter((m) => !serverMap.has(m.id));
+        return [...data.projectMembers, ...localOnly];
+      });
+    }
+
+    if (Array.isArray(data.tasks)) {
+      setTasks((currentTasks) => {
+        const serverMap = new Map(data.tasks.map((t: Task) => [t.id, t]));
+        const localOnly = currentTasks.filter((t) => !serverMap.has(t.id));
+        return [...data.tasks, ...localOnly];
+      });
+    }
+
+    if (Array.isArray(data.milestones)) {
+      setMilestones((currentM) => {
+        const serverMap = new Map(data.milestones.map((m: Milestone) => [m.id, m]));
+        const localOnly = currentM.filter((m) => !serverMap.has(m.id));
+        return [...data.milestones, ...localOnly];
+      });
+    }
+
+    if (Array.isArray(data.timeLogs)) setTimeLogs(data.timeLogs);
+    if (Array.isArray(data.invoices)) setInvoices(data.invoices);
+    if (Array.isArray(data.contracts)) setContracts(data.contracts);
+    if (Array.isArray(data.devProfiles)) setDevProfiles(data.devProfiles);
+    if (Array.isArray(data.devRates)) setDevRates(data.devRates);
+  };
+
+  // 1. Initial boot: Fetch from Firebase Firestore & Local Backend API
+  useEffect(() => {
+    // Initial fetch from Firestore
+    loadWorkspaceFromFirebase().then((data) => {
+      if (data && data.users && data.users.length > 0) {
+        applyRemoteState(data);
+      } else {
+        // Fallback to Express backend database API
+        fetch('/api/sync')
+          .then((res) => (res.ok ? res.json() : null))
+          .then((apiData) => {
+            if (apiData) applyRemoteState(apiData);
+          })
+          .catch(() => {});
+      }
+    });
+
+    // Real-time listener: receive updates when users on other phones/laptops create accounts or projects
+    const unsubscribe = subscribeToFirebaseWorkspace((remoteData) => {
+      if (remoteData) {
+        applyRemoteState(remoteData);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
-  // Sync to LocalStorage & Server Database on any change
+  // 2. Continuous Sync: write to Firebase Firestore, LocalStorage & Server on change
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
@@ -345,7 +370,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       console.error('LocalStorage sync error', e);
     }
 
-    // Persist full state to backend JSON server database
     const dbPayload = {
       users,
       projects,
@@ -359,13 +383,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       devRates,
     };
 
+    // Sync to Cloud Firebase Firestore
+    syncWorkspaceToFirebase(dbPayload);
+
+    // Sync to Server API fallback
     fetch('/api/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(dbPayload),
-    }).catch(() => {
-      // Offline fallback
-    });
+    }).catch(() => {});
   }, [users, projects, projectMembers, tasks, milestones, timeLogs, invoices, contracts, devProfiles, devRates, currentUser]);
 
   // Toast Helpers
@@ -396,13 +422,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const loginWithCredentials = async (email: string, password: string): Promise<boolean> => {
     const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
 
     // 1. Try server API
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: cleanEmail, password }),
+        body: JSON.stringify({ email: cleanEmail, password: cleanPassword }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -426,14 +453,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     // 2. Fallback to local users list
-    const matched = users.find((u) => u.email.toLowerCase() === cleanEmail);
+    const matched = users.find((u) => u.email.trim().toLowerCase() === cleanEmail);
     if (!matched) {
       showToast('Échec de connexion', 'Identifiant introuvable ou incorrect.', 'error');
       return false;
     }
 
-    const expectedPassword = matched.password || (matched.role === 'SUPER_ADMIN' ? 'Adm@n2026' : (matched.role === 'PROJECT_MANAGER' ? 'Pm@2026' : (matched.role === 'DEV' ? 'Dev@2026' : 'Client@2026')));
-    if (password !== expectedPassword) {
+    const expectedPassword = (matched.password || (matched.role === 'SUPER_ADMIN' ? 'Adm@n2026' : (matched.role === 'PROJECT_MANAGER' ? 'Pm@2026' : (matched.role === 'DEV' ? 'Dev@2026' : 'Client@2026')))).trim();
+    if (cleanPassword !== expectedPassword) {
       showToast('Mot de passe incorrect', 'Vérifiez le mot de passe saisi pour ce compte.', 'error');
       return false;
     }

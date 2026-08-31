@@ -1,0 +1,86 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with role, email, password and assigned projects",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["SUPER_ADMIN", "ADMIN", "PROJECT_MANAGER", "DEV", "CLIENT"] },
+        "password": { "type": "string" },
+        "title": { "type": "string" },
+        "company": { "type": "string" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["id", "name", "email", "role"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "Workspace project managed across teams",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string" },
+        "client_id": { "type": "string" },
+        "budget": { "type": "number" },
+        "deadline": { "type": "string" },
+        "progress": { "type": "number" }
+      },
+      "required": ["id", "name", "status"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "Kanban task item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "project_id": { "type": "string" },
+        "title": { "type": "string" },
+        "status": { "type": "string" },
+        "priority": { "type": "string" },
+        "assignee_id": { "type": "string" },
+        "is_client_visible": { "type": "boolean" }
+      },
+      "required": ["id", "project_id", "title", "status"]
+    },
+    "Milestone": {
+      "title": "Milestone",
+      "description": "Milestone deliverable",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "project_id": { "type": "string" },
+        "title": { "type": "string" },
+        "status": { "type": "string" },
+        "due_date": { "type": "string" }
+      },
+      "required": ["id", "project_id", "title"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User documents"
+    },
+    "projects/{projectId}": {
+      "schema": "Project",
+      "description": "Project documents"
+    },
+    "tasks/{taskId}": {
+      "schema": "Task",
+      "description": "Task documents"
+    },
+    "milestones/{milestoneId}": {
+      "schema": "Milestone",
+      "description": "Milestone documents"
+    },
+    "app_state/{stateId}": {
+      "schema": "object",
+      "description": "Full application synchronization state snapshot"
+    }
+  }
+}

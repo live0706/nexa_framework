@@ -80,20 +80,24 @@ export const LoginView: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Email Field */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              <label htmlFor="input-login-email" className="block text-xs font-semibold text-slate-700 mb-1.5">
                 Adresse e-mail
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                <Mail className="w-4 h-4 absolute left-3 top-3 text-slate-400 pointer-events-none" />
                 <input
                   id="input-login-email"
                   type="email"
+                  inputMode="email"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck="false"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="nom@entreprise.com"
-                  autoComplete="email"
-                  className="w-full bg-slate-50/50 border border-slate-300 rounded-lg pl-9 pr-3 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-colors"
+                  autoComplete="username email"
+                  className="w-full bg-slate-50/50 border border-slate-300 rounded-lg pl-9 pr-3 py-2.5 text-sm sm:text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-colors"
                 />
               </div>
             </div>
@@ -101,27 +105,31 @@ export const LoginView: React.FC = () => {
             {/* Password Field */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-semibold text-slate-700">
+                <label htmlFor="input-login-password" className="block text-xs font-semibold text-slate-700">
                   Mot de passe
                 </label>
               </div>
               <div className="relative">
-                <Lock className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                <Lock className="w-4 h-4 absolute left-3 top-3 text-slate-400 pointer-events-none" />
                 <input
                   id="input-login-password"
                   type={showPassword ? 'text' : 'password'}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck="false"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
                   autoComplete="current-password"
-                  className="w-full bg-slate-50/50 border border-slate-300 rounded-lg pl-9 pr-9 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-colors font-mono"
+                  className="w-full bg-slate-50/50 border border-slate-300 rounded-lg pl-9 pr-11 py-2.5 text-sm sm:text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-colors font-mono"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                  className="absolute right-1.5 top-1.5 bottom-1.5 px-2 flex items-center justify-center text-slate-400 hover:text-slate-600 active:text-slate-900 cursor-pointer touch-manipulation"
                   title={showPassword ? 'Masquer' : 'Afficher'}
+                  aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -133,7 +141,7 @@ export const LoginView: React.FC = () => {
               id="btn-submit-manual-login"
               type="submit"
               disabled={isLoading}
-              className="w-full mt-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-75 text-white font-semibold py-2.5 px-4 rounded-lg text-xs flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer"
+              className="w-full mt-2 bg-slate-900 hover:bg-slate-800 active:bg-slate-950 disabled:opacity-75 text-white font-semibold py-3 sm:py-2.5 px-4 rounded-lg text-sm sm:text-xs flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer touch-manipulation min-h-[44px]"
             >
               {isLoading ? (
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
